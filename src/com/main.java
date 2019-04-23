@@ -7,7 +7,7 @@ import java.util.*;
 public class main {
 
     private static List<File> files = new ArrayList<>();
-    private static final String APPLICATION_PACKAGE_PATH = "/Users/keeedl/COURS/BIBLIO/Castle_Clash-apk-files/sources/com";
+    private static final String APPLICATION_PACKAGE_PATH = "/Users/keeedl/COURS/BIBLIO/Castle_Clash-apk-files/test";
     private static final String CSV_MAPPING_511 = "/Users/keeedl/COURS/BIBLIO/GIT/mapping_5.1.1.csv";
     private static final String ANDROID_MANIFEST_PATH_IN_PROJECT = "AndroidManifest.xml";
 
@@ -120,6 +120,7 @@ public class main {
                     int position = data.lastIndexOf(searchingWord);
                     isUsedToCheckPermission.add(data.substring(position));
                     System.out.println("Fonction utilisée : " + data.substring(position));
+                    System.out.println(javaFile.getPath());
                 }
             }
         });
