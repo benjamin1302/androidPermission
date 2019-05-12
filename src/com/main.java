@@ -2,61 +2,147 @@ package com;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.PrintWriter;
+import java.io.UnsupportedEncodingException;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class main {
 
     private static List<File> files = new ArrayList<>();
-    private static final String APPLICATION_PACKAGE_PATH = "/Users/keeedl/COURS/BIBLIO/Castle_Clash-apk-files/test";
+    private static final String APPLICATION_PACKAGE_PATH = "/Users/keeedl/COURS/BIBLIO/apk-malware-1/sources/com";
+    //private static final String APPLICATION_PACKAGE_PATH = "/Users/keeedl/COURS/BIBLIO/Castle_Clash-apk-files/sources/com";
     private static final String CSV_MAPPING_511 = "/Users/keeedl/COURS/BIBLIO/GIT/mapping_5.1.1.csv";
     private static final String ANDROID_MANIFEST_PATH_IN_PROJECT = "AndroidManifest.xml";
 
     public static void main(String args[]) {
 
        final File folder = new File(APPLICATION_PACKAGE_PATH);
-        List<Permission> permissionsAndFunctions = getPermissionsAndFunctionList();
+        //HashMap<String, List<String>> permissionsAndFunctions = getPermissionsAndFunctionList();
+        HashMap<String, HashSet<String>> permissionsAndFunctions = getPermissionsAndFunctionList();
         List<String> getPermissionsFromManifest = getPermissionsAndroidManifest();
-        List<String> match = new ArrayList<>();
+        HashSet<String> usedPermissions = new HashSet<>();
 
-        permissionsAndFunctions.forEach(permissionAndFuntion -> {
-            for (String permissionManifest : getPermissionsFromManifest) {
-                if(permissionManifest.equals(permissionAndFuntion.getPermissionName())) {
+        for (String permissionManifest : getPermissionsFromManifest) {
+            if(permissionsAndFunctions.containsKey(permissionManifest)) {
 
-                    List<String> getPermissionsFromApiCall = searchWordInFiles((listFilesFromFolder(folder)), permissionAndFuntion.getFunctionName());
-                    //
-                    if(!match.contains(permissionManifest)) {
-                        match.add(permissionManifest);
+                HashSet<String> functionsMatchingWithPermission = permissionsAndFunctions.get(permissionManifest);
+
+                functionsMatchingWithPermission.forEach(functionMatchingWithPermission -> {
+                    AtomicBoolean isUsedPermissionInSourceFiles = searchWordInFiles((listFilesFromFolder(folder)), functionMatchingWithPermission, permissionManifest);
+                    if(isUsedPermissionInSourceFiles.get()) {
+                        usedPermissions.add(permissionManifest);
                     }
-                    System.out.println("Match des permissions : " + permissionManifest);
-                }
+                });
+
             }
-        });
-        match.forEach(matche -> System.out.println(matche));
+        }
 
-        //getPermissionsFromManifest.forEach(permission -> System.out.println(permission));
+        createFileTxt(getPermissionsFromManifest, usedPermissions);
 
-        //List<String> getPermissionsFromApiCall = searchWordInFiles((listFilesFromFolder(folder)));
-
-        //List<String> realUsedPermissions = checkUsedAndCalledPermissions(getPermissionsFromManifest, getPermissionsFromApiCall);
-
-        //displayUsedAndUnusedPermissions(getPermissionsFromManifest, realUsedPermissions);
     }
 
-    private static List<Permission> getPermissionsAndFunctionList() {
+    private static List<String> getDangerousPermission(List<String> getPermissionsFromManifest) {
+
+        List<String> dangerousPermissions = Arrays.asList("READ_CALENDAR","WRITE_CALENDAR","CAMERA","READ_CONTACTS","WRITE_CONTACTS","GET_ACCOUNTS","ACCESS_FINE_LOCATION","ACCESS_COARSE_LOCATION","RECORD_AUDIO","READ_PHONE_STATE","READ_PHONE_NUMBERS","CALL_PHONE","ANSWER_PHONE_CALLS","READ_CALL_LOG","WRITE_CALL_LOG","ADD_VOICEMAIL","USE_SIP","PROCESS_OUTGOING_CALLS","BODY_SENSORS","SEND_SMS","RECEIVE_SMS","READ_SMS","RECEIVE_WAP_PUSH","RECEIVE_MMS","READ_EXTERNAL_STORAGE","WRITE_EXTERNAL_STORAGE");
+
+        List<String> dangerousPermissionRequested = new ArrayList<>();
+        //int sizeDangerousPermission = dangerousPermissions.size();
+
+        int i = 0;
+        for(String permissionManifest : getPermissionsFromManifest) {
+            if( permissionManifest.equals(dangerousPermissions.get(i))) {
+                dangerousPermissionRequested.add(permissionManifest);
+            }
+            i++;
+        }
+        return dangerousPermissionRequested;
+    }
+
+    private static void createFileTxt(List<String> getPermissionsFromManifest, HashSet<String> usedPermissions) {
+
+        PrintWriter writer = null;
+
+        try {
+            writer = new PrintWriter("Malware1.txt", "UTF-8");
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        }
+
+        writer.println("Application : Malware1");
+        writer.println();
+
+        writer.println("Permissions de l'AndroidManifest.xml :");
+        for(String permissionManifest : getPermissionsFromManifest) {
+            writer.println(permissionManifest);
+        }
+        writer.println();
+
+        writer.println("Permissions utilisées dans le code :");
+        for(String usedPermission : usedPermissions) {
+            writer.println(usedPermission);
+        }
+        writer.println();
+
+        int cpt = 0;
+        writer.println("Permissions non utilisées dans le code :");
+        for(String permisionManifest : getPermissionsFromManifest) {
+            if(!usedPermissions.contains(permisionManifest)) {
+                writer.println(permisionManifest);
+                cpt++;
+            }
+        }
+        writer.println();
+
+        List<String> dangerousPermissions = getDangerousPermission(getPermissionsFromManifest);
+        writer.println("Permissions demandées dangereuses :");
+        for(String dangerousPermission : dangerousPermissions) {
+                writer.println(dangerousPermission);
+            }
+        writer.println();
+
+        writer.println("Permissions non utilisées et dangereuses :");
+        int cptDeux = 0;
+        for(String permisionManifest : getPermissionsFromManifest) {
+            if(!usedPermissions.contains(permisionManifest) && dangerousPermissions.contains(permisionManifest)) {
+                writer.println(permisionManifest);
+                cptDeux++;
+            }
+        }
+        writer.println();
+
+        writer.println("Nombre de permissions du manifest : " + getPermissionsFromManifest.size());
+        writer.println("Nombre de permissions du manifest utilisées : : " + usedPermissions.size());
+        writer.println("Nombre de permissions du manifest non utilisées : " + cpt);
+        writer.println("Nombre de permissions dangereuses : " + dangerousPermissions.size());
+        writer.println("Nombre de permissions non utilisées et dangereuses : " + cptDeux);
+
+        writer.close();
+    }
+
+    private static HashMap<String, HashSet<String>> getPermissionsAndFunctionList() {
 
 
-        List<Permission> permissions = new ArrayList<>();
+        HashMap<String, HashSet<String>> permissions = new HashMap<>();
         List<String> records = new ArrayList<>();
+        HashSet<String> test = new HashSet<>();
         try (Scanner scanner = new Scanner(new File(CSV_MAPPING_511))) {
             while (scanner.hasNextLine()) {
-                Permission permission = new Permission();
+                //Permission permission = new Permission();
+                String permissionName = null;
                 records.add(scanner.nextLine());
                 if(records.get(records.size()-1).contains("android.permission.")) {
                     int tailleMot = new String("android.permission.").length();
                     int position = records.get(records.size()-1).lastIndexOf("android.permission.")+tailleMot;
                     int positionVirgule = records.get(records.size()-1).lastIndexOf(",");
-                    String permissionName = records.get(records.size()-1).substring(position, positionVirgule);
-                    permission.setPermissionName(permissionName);
+                    permissionName = records.get(records.size()-1).substring(position, positionVirgule);
+                    if(!permissions.containsKey(permissionName)) {
+                        test = new HashSet<>();
+                    }
+                    //permission.setPermissionName(permissionName);
+                    //permissions.put(permissionName, null);
 
                 }
 
@@ -65,17 +151,25 @@ public class main {
 
                 if(positionParenthese != -1) {
                     String functionCall = records.get(records.size()-1).substring(positionVirgule, positionParenthese).replace(",", "");
-                    permission.setFunctionName(functionCall);
+                    //permission.setFunctionName(functionCall);
+                    //permission.getHashMap().put(permissionName, functionCall);
+
+                    if(!functionCall.contains("<init>")) {
+                        test.add(functionCall);
+                        permissions.put(permissionName, test);
+                    }
+                    //permissions.put(permissionName);
+                    //permissions.get(permissionName).add(functionCall);
                 }
-                permissions.add(permission);
+                //permissions.p(permission);
             }
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-        permissions.forEach(permission -> {
-            System.out.println(permission.getPermissionName() + "  -  " + permission.getFunctionName());
-        });
-        System.out.println("nombre de fonctions : " + permissions.size());
+       // permissions.forEach(permission -> {
+        //    System.out.println(permission.getHashMap().get + "  -  " + permission.getFunctionName());
+        //});
+        //System.out.println("nombre de fonctions : " + permissions.size());
 
         return permissions;
     }
@@ -110,21 +204,30 @@ public class main {
         return usedPermissions;
     }
 
-    private static List<String> searchWordInFiles(List<File> javaFiles, String searchingWord) {
+    private static AtomicBoolean searchWordInFiles(List<File> javaFiles, String searchingWord, String permission) {
 
-        List<String> isUsedToCheckPermission = new ArrayList<>();
+        //List<String> isUsedToCheckPermission = new ArrayList<>();
+        AtomicBoolean isUsedPermission = new AtomicBoolean(false);
+
         javaFiles.forEach(javaFile -> {
             for(String data : getDatasFromFile(javaFile.getPath())) {
 
                 if(data.contains(searchingWord)) {
                     int position = data.lastIndexOf(searchingWord);
-                    isUsedToCheckPermission.add(data.substring(position));
-                    System.out.println("Fonction utilisée : " + data.substring(position));
+                    //isUsedToCheckPermission.add(data.substring(position));
+                    System.out.println("Fonction utilisée : " + data.substring(position) + "-- Permission : " + permission);
                     System.out.println(javaFile.getPath());
+                    isUsedPermission.set(true);
+                    break;
+                }
+                if(isUsedPermission.get()) {
+                    break;
                 }
             }
         });
-        return isUsedToCheckPermission;
+
+        return isUsedPermission;
+        //return isUsedToCheckPermission;
     }
 
     private static List<String> getPermissionsAndroidManifest() {
